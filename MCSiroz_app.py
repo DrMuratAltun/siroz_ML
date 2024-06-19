@@ -4,7 +4,7 @@ from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder, StandardScaler, MinMaxScaler, FunctionTransformer
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import log_loss
-from xgboost import XGBClassifier
+#from xgboost import XGBClassifier
 from lightgbm import LGBMClassifier
 from sklearn.ensemble import GradientBoostingClassifier
 import pandas as pd
