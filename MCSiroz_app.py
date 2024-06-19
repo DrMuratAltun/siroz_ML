@@ -1,13 +1,11 @@
-import joblib
-from sklearn.pipeline import Pipeline
-from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import LabelEncoder, OneHotEncoder, StandardScaler, MinMaxScaler, FunctionTransformer
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import log_loss
-#from xgboost import XGBClassifier
-from lightgbm import LGBMClassifier
-from sklearn.ensemble import GradientBoostingClassifier
+import streamlit as st
 import pandas as pd
+import joblib
+import numpy as np
+from sklearn.preprocessing import LabelEncoder
+
+# Modeli yükle
+loaded_model = joblib.load('best_model_pipeline.pkl')
 
 # Kategorik ve sayısal özniteliklerin listesi
 categorical_columns = ['Drug', 'Sex', 'Ascites', 'Hepatomegaly', 'Spiders', 'Edema']
@@ -15,70 +13,53 @@ numeric_columns = ['N_Days', 'Age', 'Bilirubin', 'Cholesterol', 'Albumin', 'Copp
 
 # LabelEncoder'ı tüm kategorik sütunlara uygulayan fonksiyon
 def apply_label_encoder(df):
-    le = LabelEncoder()
+    df = df.copy()
     for col in categorical_columns:
+        le = LabelEncoder()
         df[col] = le.fit_transform(df[col])
     return df
 
-# LabelEncoder ile dönüşüm uygulayan bir FunctionTransformer
-label_encoder_transformer = FunctionTransformer(apply_label_encoder, validate=False)
+# Streamlit formu
+st.title("Cirrhosis Outcome Prediction")
+st.write("Lütfen aşağıdaki formu doldurun ve tahmin sonuçlarını görmek için 'Gönder' butonuna tıklayın.")
 
-def model_fit_evaluation(models=[GradientBoostingClassifier(), XGBClassifier(), LGBMClassifier()], 
-                         X=None, y=None, 
-                         categorical_transformer='onehot', 
-                         numeric_transformer='standard'):
-    results = []
-    best_model = None
-    best_loss = float('inf')
+with st.form(key='prediction_form'):
+    # Kategorik girdiler
+    categorical_inputs = {}
+    for col in categorical_columns:
+        categorical_inputs[col] = st.selectbox(f"{col}", options=['A', 'B', 'C'])  # Kategorik değerlerinizi buraya ekleyin
+
+    # Sayısal girdiler
+    numeric_inputs = {}
+    for col in numeric_columns:
+        numeric_inputs[col] = st.number_input(f"{col}", min_value=0.0, max_value=100.0, step=0.1)
     
-    if categorical_transformer == 'label':
-        cat_transformer = label_encoder_transformer
-    else:
-        cat_transformer = OneHotEncoder(handle_unknown='ignore')
+    submit_button = st.form_submit_button(label='Gönder')
 
-    if numeric_transformer == 'minmax':
-        num_transformer = MinMaxScaler()
-    else:
-        num_transformer = StandardScaler()
+# Kullanıcı formu gönderdiğinde tahmin yap
+if submit_button:
+    # Girdileri veri çerçevesine dönüştür
+    input_data = {**categorical_inputs, **numeric_inputs}
+    input_df = pd.DataFrame([input_data])
+
+    # LabelEncoder uygulaması
+    input_df = apply_label_encoder(input_df)
+
+    # Tahmin yap
+    predictions_proba = loaded_model.predict_proba(input_df)[0]
+    class_names = ['C', 'CL', 'D']  # Sınıf isimleri
+    predictions_class = np.argmax(predictions_proba)
     
-    preprocessor = ColumnTransformer(
-        transformers=[
-            ('categorical', cat_transformer, categorical_columns),
-            ('numeric', num_transformer, numeric_columns)
-        ]
-    )
+    st.write("Tahmin Olasılıkları:")
+    for idx, proba in enumerate(predictions_proba):
+        st.write(f"Sınıf {class_names[idx]}: {proba:.2f}")
     
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    for model in models:
-        pipeline = Pipeline(steps=[
-            ('preprocessor', preprocessor),
-            ('model', model)
-        ])
-        pipeline.fit(X_train, y_train)
-        y_pred_proba = pipeline.predict_proba(X_test)
-        loss = log_loss(y_test, y_pred_proba)
-        results.append({
-            'Model': type(model).__name__,
-            'Log Loss': loss
-        })
-        if loss < best_loss:
-            best_loss = loss
-            best_model = pipeline  # En iyi modeli pipeline olarak kaydet
-
-    results_df = pd.DataFrame(results)
-    results_df = results_df.sort_values('Log Loss')
-    print(results_df)
+    st.write(f"En yüksek olasılıklı sınıf: {class_names[predictions_class]}")
     
-    return best_model
-
-# Veriyi hazırla
-train = pd.read_csv("/kaggle/input/playground-series-s3e26/train.csv")
-X = train.drop(columns=['Status'])
-y = train['Status']
-y = y.map({'C': 0, 'CL': 1, 'D': 2})
-
-# Modelleri eğit ve değerlendir
-best_pipeline = model_fit_evaluation(X=X, y=y, categorical_transformer='label', numeric_transformer='minmax')
-
-# En iyi modeli ve ön işlemcileri kaydet
-joblib.dump(best_pipeline, 'best_model_pipeline.pkl')
+    # Sınıf açıklamaları
+    if class_names[predictions_class] == 'C':
+        st.write("Tahmin: C (censored) - Hasta N_Days'de hayattaydı.")
+    elif class_names[predictions_class] == 'CL':
+        st.write("Tahmin: CL - Hasta N_Days'de karaciğer nakli nedeniyle hayattaydı.")
+    elif class_names[predictions_class] == 'D':
+        st.write("Tahmin: D - Hasta N_Days'de vefat etti.")
