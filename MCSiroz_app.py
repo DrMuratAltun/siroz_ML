@@ -5,7 +5,7 @@ import numpy as np
 from sklearn.preprocessing import LabelEncoder
 
 # Modeli yükle
-loaded_model = joblib.load('best_model_pipeline.pkl')
+#loaded_model = joblib.load('best_model_pipeline.pkl')
 
 # Kategorik ve sayısal özniteliklerin listesi
 categorical_columns = ['Drug', 'Sex', 'Ascites', 'Hepatomegaly', 'Spiders', 'Edema']
@@ -46,20 +46,21 @@ if submit_button:
     input_df = apply_label_encoder(input_df)
 
     # Tahmin yap
-    predictions_proba = loaded_model.predict_proba(input_df)[0]
-    class_names = ['C', 'CL', 'D']  # Sınıf isimleri
-    predictions_class = np.argmax(predictions_proba)
+    #predictions_proba = loaded_model.predict_proba(input_df)[0]
+    #class_names = ['C', 'CL', 'D']  # Sınıf isimleri
+    #predictions_class = np.argmax(predictions_proba)
     
     st.write("Tahmin Olasılıkları:")
     for idx, proba in enumerate(predictions_proba):
-        st.write(f"Sınıf {class_names[idx]}: {proba:.2f}")
+        #st.write(f"Sınıf {class_names[idx]}: {proba:.2f}")
+    st.write('Tahmin yapılamıyor.')
     
     st.write(f"En yüksek olasılıklı sınıf: {class_names[predictions_class]}")
     
     # Sınıf açıklamaları
-    if class_names[predictions_class] == 'C':
+    '''if class_names[predictions_class] == 'C':
         st.write("Tahmin: C (censored) - Hasta N_Days'de hayattaydı.")
     elif class_names[predictions_class] == 'CL':
         st.write("Tahmin: CL - Hasta N_Days'de karaciğer nakli nedeniyle hayattaydı.")
     elif class_names[predictions_class] == 'D':
-        st.write("Tahmin: D - Hasta N_Days'de vefat etti.")
+        st.write("Tahmin: D - Hasta N_Days'de vefat etti.")'''
