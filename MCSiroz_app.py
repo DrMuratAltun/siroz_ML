@@ -51,7 +51,7 @@ if submit_button:
     #predictions_class = np.argmax(predictions_proba)
     
     st.write("Tahmin Olasılıkları:")
-    for idx, proba in enumerate(predictions_proba):
+    #for idx, proba in enumerate(predictions_proba):
         #st.write(f"Sınıf {class_names[idx]}: {proba:.2f}")
     st.write('Tahmin yapılamıyor.')
     
